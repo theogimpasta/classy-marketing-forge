@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/lib/auth';
+import { Navigate } from 'react-router-dom';
 
 interface ContentHistoryItem {
   id: string;
@@ -15,6 +17,12 @@ interface ContentHistoryItem {
 export default function History() {
   const [history, setHistory] = useState<ContentHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
+
+  // Redirect to login if not authenticated
+  if (!user) {
+    return <Navigate to="/auth" />;
+  }
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -25,7 +33,7 @@ export default function History() {
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-        setHistory(data || []);
+        setHistory(data as ContentHistoryItem[]);
       } catch (error: any) {
         console.error('Error fetching history:', error.message);
       } finally {
@@ -33,8 +41,10 @@ export default function History() {
       }
     };
 
-    fetchHistory();
-  }, []);
+    if (user) {
+      fetchHistory();
+    }
+  }, [user]);
 
   if (isLoading) {
     return <div className="container py-8">Loading...</div>;
