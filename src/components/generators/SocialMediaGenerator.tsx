@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Form, 
   FormControl, 
@@ -25,6 +24,8 @@ import { useToast } from "@/components/ui/use-toast";
 import ImageGenerator from "./ImageGenerator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 
 const formSchema = z.object({
   platform: z.string().min(1, { message: "Please select a platform" }),
@@ -36,9 +37,11 @@ const formSchema = z.object({
 
 export default function SocialMediaGenerator() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState("");
   const [generatedImage, setGeneratedImage] = useState("");
+  const [imagePrompt, setImagePrompt] = useState("");
   const [isCopied, setIsCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("content");
   
@@ -81,7 +84,17 @@ export default function SocialMediaGenerator() {
       const content = generateSampleContent(platform, data.topic, tone, data.audience, data.callToAction);
       
       setGeneratedContent(content);
+      
+      // Create an image prompt based on the content
+      const newImagePrompt = createImagePrompt(platform, data.topic, tone, data.audience);
+      setImagePrompt(newImagePrompt);
+      
       setIsGenerating(false);
+      
+      // Save to content history if user is logged in
+      if (user) {
+        saveContentToHistory(platform, data.topic, content);
+      }
       
       toast({
         title: "Content Generated!",
@@ -125,6 +138,27 @@ export default function SocialMediaGenerator() {
     return content;
   };
   
+  const createImagePrompt = (platform: string, topic: string, tone: string, audience: string) => {
+    // Create a specific image prompt based on the post details
+    let prompt = "";
+    
+    switch (platform) {
+      case "Instagram":
+        prompt = `Social media post image about ${topic} for ${audience} in a ${tone} style. Vibrant, engaging, Instagram-friendly visual`;
+        break;
+      case "LinkedIn":
+        prompt = `Professional image related to ${topic} for ${audience}. Clean, business-appropriate ${tone} visual for LinkedIn`;
+        break;
+      case "Twitter":
+        prompt = `Twitter-optimized image about ${topic} for ${audience}. Bold, attention-grabbing, ${tone} style`;
+        break;
+      default:
+        prompt = `Social media image about ${topic} for ${audience} with a ${tone} aesthetic`;
+    }
+    
+    return prompt;
+  };
+  
   const copyToClipboard = () => {
     navigator.clipboard.writeText(generatedContent);
     setIsCopied(true);
@@ -136,10 +170,21 @@ export default function SocialMediaGenerator() {
   const handleImageGenerated = (imageUrl: string) => {
     setGeneratedImage(imageUrl);
   };
-
-  const getImagePrompt = () => {
-    const data = form.getValues();
-    return `${data.topic} for ${data.audience} in a ${data.tone} style for ${platforms[data.platform] || data.platform} post`;
+  
+  // Save content to history
+  const saveContentToHistory = async (platform: string, topic: string, content: string) => {
+    try {
+      if (!user) return;
+      
+      await supabase.from('content_history').insert({
+        content_type: 'social',
+        title: `${platform} post: ${topic}`,
+        content: content,
+        user_id: user.id
+      });
+    } catch (error) {
+      console.error("Error saving to history:", error);
+    }
   };
 
   const platforms: Record<string, string> = {
@@ -285,10 +330,14 @@ export default function SocialMediaGenerator() {
             <TabsContent value="image" className="mt-4">
               <div className="border rounded-md p-4 bg-card">
                 <h3 className="font-medium mb-2">Post Image</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Prompt: {imagePrompt}
+                </p>
                 <ImageGenerator 
-                  prompt={getImagePrompt()} 
+                  prompt={imagePrompt} 
                   width={400}
                   height={400}
+                  autoGenerate={true}
                   onImageGenerated={handleImageGenerated}
                 />
               </div>

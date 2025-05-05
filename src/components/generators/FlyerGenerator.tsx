@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { 
   Form, 
@@ -25,6 +24,8 @@ import { Loader2, Copy, Check, Download } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ImageGenerator from "./ImageGenerator";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
 
 const formSchema = z.object({
   headline: z.string().min(5, { message: "Headline must be at least 5 characters long" }),
@@ -39,9 +40,11 @@ const formSchema = z.object({
 
 export default function FlyerGenerator() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedFlyer, setGeneratedFlyer] = useState<{html: string, text: string} | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [imagePrompt, setImagePrompt] = useState("");
   const [isCopied, setIsCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("flyer");
   
@@ -68,7 +71,17 @@ export default function FlyerGenerator() {
       const flyerContent = generateSampleFlyer(data);
       
       setGeneratedFlyer(flyerContent);
+      
+      // Create an image prompt based on the flyer
+      const newImagePrompt = createImagePrompt(data);
+      setImagePrompt(newImagePrompt);
+      
       setIsGenerating(false);
+      
+      // Save to content history if user is logged in
+      if (user) {
+        saveContentToHistory(data.headline, flyerContent.text);
+      }
       
       toast({
         title: "Flyer Generated!",
@@ -191,6 +204,26 @@ ${data.contactInfo}
     return { html, text };
   };
   
+  const createImagePrompt = (data: z.infer<typeof formSchema>) => {
+    // Create a specific image prompt based on the flyer details
+    let style = "";
+    switch (data.style) {
+      case "modern":
+        style = "modern, sleek, minimalist";
+        break;
+      case "classic":
+        style = "classic, traditional, elegant";
+        break;
+      case "minimal":
+        style = "minimalist, clean, simple";
+        break;
+      default:
+        style = "professional";
+    }
+    
+    return `Marketing promotional image for ${data.businessName} featuring ${data.headline}. ${data.subheading || ''} ${style} style with ${data.color} color scheme, suitable for a flyer.`;
+  };
+  
   const copyToClipboard = () => {
     if (generatedFlyer) {
       navigator.clipboard.writeText(generatedFlyer.text);
@@ -204,10 +237,21 @@ ${data.contactInfo}
   const handleImageGenerated = (imageUrl: string) => {
     setGeneratedImage(imageUrl);
   };
-
-  const getImagePrompt = () => {
-    const data = form.getValues();
-    return `Marketing flyer for ${data.businessName} about ${data.headline} with ${data.style} design style and ${data.color} color scheme`;
+  
+  // Save content to history
+  const saveContentToHistory = async (headline: string, content: string) => {
+    try {
+      if (!user) return;
+      
+      await supabase.from('content_history').insert({
+        content_type: 'flyer',
+        title: headline,
+        content: content,
+        user_id: user.id
+      });
+    } catch (error) {
+      console.error("Error saving to history:", error);
+    }
   };
 
   return (
@@ -395,10 +439,14 @@ ${data.contactInfo}
             <TabsContent value="image" className="mt-4">
               <div className="border rounded-md p-4 bg-card">
                 <h3 className="font-medium mb-2">Promotional Image</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Prompt: {imagePrompt}
+                </p>
                 <ImageGenerator 
-                  prompt={getImagePrompt()} 
+                  prompt={imagePrompt} 
                   width={500}
                   height={500}
+                  autoGenerate={true}
                   onImageGenerated={handleImageGenerated}
                 />
               </div>

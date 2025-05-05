@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw } from "lucide-react";
 
@@ -7,6 +7,7 @@ interface ImageGeneratorProps {
   prompt: string;
   width?: number;
   height?: number;
+  autoGenerate?: boolean;
   onImageGenerated?: (imageUrl: string) => void;
 }
 
@@ -14,11 +15,19 @@ export default function ImageGenerator({
   prompt, 
   width = 512, 
   height = 512,
+  autoGenerate = false,
   onImageGenerated 
 }: ImageGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Auto-generate image when prompt changes and autoGenerate is true
+  useEffect(() => {
+    if (autoGenerate && prompt && !imageUrl) {
+      generateImage();
+    }
+  }, [prompt, autoGenerate]);
   
   const generateImage = async () => {
     if (!prompt) return;
@@ -37,8 +46,11 @@ export default function ImageGenerator({
       const timestamp = new Date().getTime();
       const seed = Math.floor(Math.random() * 1000);
       
+      // Encode prompt for URL safety and truncate if needed
+      const encodedPrompt = encodeURIComponent(prompt.substring(0, 100));
+      
       // Use a placeholder service - in production this would be your actual AI image generation API
-      const generatedImageUrl = `https://picsum.photos/seed/${seed}/${width}/${height}?t=${timestamp}`;
+      const generatedImageUrl = `https://picsum.photos/seed/${seed}-${encodedPrompt}/${width}/${height}?t=${timestamp}`;
       
       setImageUrl(generatedImageUrl);
       if (onImageGenerated) {
@@ -53,6 +65,7 @@ export default function ImageGenerator({
   };
   
   const regenerateImage = () => {
+    setImageUrl(null); // Clear current image
     generateImage();
   };
   
