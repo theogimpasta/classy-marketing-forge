@@ -27,13 +27,17 @@ export default function History() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
+        // Fix: Use the type-safe approach with explicit typing
         const { data, error } = await supabase
           .from('content_history')
           .select('*')
-          .order('created_at', { ascending: false });
+          .order('created_at', { ascending: false }) as {
+            data: ContentHistoryItem[] | null;
+            error: Error | null;
+          };
 
         if (error) throw error;
-        setHistory(data as ContentHistoryItem[]);
+        setHistory(data as ContentHistoryItem[] || []);
       } catch (error: any) {
         console.error('Error fetching history:', error.message);
       } finally {
