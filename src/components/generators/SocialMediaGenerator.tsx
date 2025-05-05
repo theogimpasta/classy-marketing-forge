@@ -9,7 +9,6 @@ import {
   FormMessage 
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { 
   Select,
@@ -23,6 +22,9 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Loader2, Copy, Check } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import ImageGenerator from "./ImageGenerator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 
 const formSchema = z.object({
   platform: z.string().min(1, { message: "Please select a platform" }),
@@ -36,7 +38,9 @@ export default function SocialMediaGenerator() {
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState("");
+  const [generatedImage, setGeneratedImage] = useState("");
   const [isCopied, setIsCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("content");
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -127,6 +131,22 @@ export default function SocialMediaGenerator() {
     setTimeout(() => {
       setIsCopied(false);
     }, 2000);
+  };
+
+  const handleImageGenerated = (imageUrl: string) => {
+    setGeneratedImage(imageUrl);
+  };
+
+  const getImagePrompt = () => {
+    const data = form.getValues();
+    return `${data.topic} for ${data.audience} in a ${data.tone} style for ${platforms[data.platform] || data.platform} post`;
+  };
+
+  const platforms: Record<string, string> = {
+    instagram: "Instagram",
+    facebook: "Facebook",
+    twitter: "Twitter",
+    linkedin: "LinkedIn",
   };
 
   return (
@@ -249,16 +269,41 @@ export default function SocialMediaGenerator() {
         </Form>
       ) : (
         <div className="space-y-4">
-          <div className="border rounded-md p-4 bg-card">
-            <h3 className="font-medium mb-2">Generated Post</h3>
-            <div className="whitespace-pre-line text-sm">{generatedContent}</div>
-          </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="content">Text Content</TabsTrigger>
+              <TabsTrigger value="image">Image</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="content" className="mt-4">
+              <div className="border rounded-md p-4 bg-card">
+                <h3 className="font-medium mb-2">Generated Post</h3>
+                <div className="whitespace-pre-line text-sm">{generatedContent}</div>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="image" className="mt-4">
+              <div className="border rounded-md p-4 bg-card">
+                <h3 className="font-medium mb-2">Post Image</h3>
+                <ImageGenerator 
+                  prompt={getImagePrompt()} 
+                  width={400}
+                  height={400}
+                  onImageGenerated={handleImageGenerated}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
           
           <div className="flex gap-2">
             <Button
               variant="outline"
               className="flex-1"
-              onClick={() => setGeneratedContent("")}
+              onClick={() => {
+                setGeneratedContent("");
+                setGeneratedImage("");
+                setActiveTab("content");
+              }}
             >
               Back to Form
             </Button>

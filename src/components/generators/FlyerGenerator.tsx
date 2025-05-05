@@ -23,6 +23,8 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Loader2, Copy, Check, Download } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ImageGenerator from "./ImageGenerator";
 
 const formSchema = z.object({
   headline: z.string().min(5, { message: "Headline must be at least 5 characters long" }),
@@ -39,7 +41,9 @@ export default function FlyerGenerator() {
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedFlyer, setGeneratedFlyer] = useState<{html: string, text: string} | null>(null);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("flyer");
   
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -195,6 +199,15 @@ ${data.contactInfo}
         setIsCopied(false);
       }, 2000);
     }
+  };
+
+  const handleImageGenerated = (imageUrl: string) => {
+    setGeneratedImage(imageUrl);
+  };
+
+  const getImagePrompt = () => {
+    const data = form.getValues();
+    return `Marketing flyer for ${data.businessName} about ${data.headline} with ${data.style} design style and ${data.color} color scheme`;
   };
 
   return (
@@ -364,18 +377,43 @@ ${data.contactInfo}
         </Form>
       ) : (
         <div className="space-y-4">
-          <div className="border rounded-md bg-card overflow-hidden">
-            <div 
-              className="w-full p-4 flex justify-center"
-              dangerouslySetInnerHTML={{ __html: generatedFlyer.html }}
-            />
-          </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="flyer">Flyer Design</TabsTrigger>
+              <TabsTrigger value="image">Supporting Image</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="flyer" className="mt-4">
+              <div className="border rounded-md bg-card overflow-hidden">
+                <div 
+                  className="w-full p-4 flex justify-center"
+                  dangerouslySetInnerHTML={{ __html: generatedFlyer.html }}
+                />
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="image" className="mt-4">
+              <div className="border rounded-md p-4 bg-card">
+                <h3 className="font-medium mb-2">Promotional Image</h3>
+                <ImageGenerator 
+                  prompt={getImagePrompt()} 
+                  width={500}
+                  height={500}
+                  onImageGenerated={handleImageGenerated}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
           
           <div className="flex gap-2">
             <Button
               variant="outline"
               className="flex-1"
-              onClick={() => setGeneratedFlyer(null)}
+              onClick={() => {
+                setGeneratedFlyer(null);
+                setGeneratedImage(null);
+                setActiveTab("flyer");
+              }}
             >
               Back to Form
             </Button>

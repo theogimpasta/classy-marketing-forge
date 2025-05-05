@@ -9,57 +9,7 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      content_history: {
-        Row: {
-          content: string
-          content_type: string
-          created_at: string
-          id: string
-          title: string
-          user_id: string
-        }
-        Insert: {
-          content: string
-          content_type: string
-          created_at?: string
-          id?: string
-          title: string
-          user_id: string
-        }
-        Update: {
-          content?: string
-          content_type?: string
-          created_at?: string
-          id?: string
-          title?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      profiles: {
-        Row: {
-          avatar_url: string | null
-          created_at: string
-          full_name: string | null
-          id: string
-          updated_at: string
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string
-          full_name?: string | null
-          id: string
-          updated_at?: string
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string
-          full_name?: string | null
-          id?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Views: {
       [_ in never]: never
